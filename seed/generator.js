@@ -1,0 +1,587 @@
+const fs = require('fs');
+const path = require('path');
+
+// Formula: trust_score = ((rating/5)*40 + (min(totalJobs/200,1))*30 + (1-cancellationRate)*20 + (1-(avgResponseTime/60))*10)
+const calculateTrustScore = (rating, totalJobs, cancellationRate, avgResponseTime) => {
+  const ratingTerm = (rating / 5) * 40;
+  const jobsTerm = Math.min(totalJobs / 200, 1) * 30;
+  const cancelTerm = (1 - cancellationRate) * 20;
+  const responseTerm = (1 - (avgResponseTime / 60)) * 10;
+  
+  const score = ratingTerm + jobsTerm + cancelTerm + responseTerm;
+  return parseFloat(score.toFixed(1));
+};
+
+const providers = [
+  // --- ISLAMABAD (10 providers) ---
+  {
+    _id: "PRV001",
+    name: "Sajid Ali",
+    owner_name: "Sajid Ali",
+    service_types: ["AC Technician"],
+    service_types_urdu: ["اے سی ٹیکنیشن"],
+    areas_covered: ["G-9", "G-10", "G-11", "G-12"],
+    city: "Islamabad",
+    base_location: { lat: 33.6844, lng: 73.0479, area: "G-10" },
+    rating: 4.8,
+    total_jobs_completed: 140,
+    cancellation_rate: 0.02,
+    avg_response_time_minutes: 15,
+    available_slots: {
+      monday: ["09:00", "11:00", "14:00", "16:00"],
+      tuesday: ["09:00", "11:00", "14:00", "16:00"],
+      wednesday: ["09:00", "11:00", "14:00", "16:00"],
+      thursday: ["09:00", "11:00", "14:00", "16:00"],
+      friday: ["09:00", "11:00", "15:00"],
+      saturday: ["10:00", "12:00", "14:00"],
+      sunday: []
+    },
+    price_range_pkr: { min: 1500, max: 5000 },
+    languages_spoken: ["Urdu", "Punjabi", "English"],
+    verified: true,
+    active: true
+  },
+  {
+    _id: "PRV002",
+    name: "Muhammad Bilal",
+    owner_name: "Bilal Ahmed",
+    service_types: ["Plumber"],
+    service_types_urdu: ["پلمبر"],
+    areas_covered: ["F-6", "F-7", "F-8", "F-10"],
+    city: "Islamabad",
+    base_location: { lat: 33.7297, lng: 73.0754, area: "F-7" },
+    rating: 4.6,
+    total_jobs_completed: 185,
+    cancellation_rate: 0.03,
+    avg_response_time_minutes: 20,
+    available_slots: {
+      monday: ["10:00", "12:00", "15:00"],
+      tuesday: ["10:00", "12:00", "15:00"],
+      wednesday: ["10:00", "12:00", "15:00"],
+      thursday: ["10:00", "12:00", "15:00"],
+      friday: ["10:00", "12:00"],
+      saturday: ["09:00", "11:00", "14:00", "16:00"],
+      sunday: ["10:00", "12:00"]
+    },
+    price_range_pkr: { min: 1000, max: 3500 },
+    languages_spoken: ["Urdu", "Pashto"],
+    verified: true,
+    active: true
+  },
+  {
+    _id: "PRV003",
+    name: "Tariq Mahmood",
+    owner_name: "Tariq Mahmood",
+    service_types: ["Electrician"],
+    service_types_urdu: ["الیکٹریشن"],
+    areas_covered: ["I-8", "I-9", "I-10"],
+    city: "Islamabad",
+    base_location: { lat: 33.6428, lng: 73.0789, area: "I-8" },
+    rating: 4.7,
+    total_jobs_completed: 98,
+    cancellation_rate: 0.05,
+    avg_response_time_minutes: 18,
+    available_slots: {
+      monday: ["09:00", "13:00", "16:00"],
+      tuesday: ["09:00", "13:00", "16:00"],
+      wednesday: ["09:00", "13:00", "16:00"],
+      thursday: ["09:00", "13:00", "16:00"],
+      friday: ["15:00", "17:00"],
+      saturday: [],
+      sunday: []
+    },
+    price_range_pkr: { min: 1000, max: 3000 },
+    languages_spoken: ["Urdu", "Punjabi"],
+    verified: true,
+    active: true
+  },
+  {
+    _id: "PRV004",
+    name: "Asif Iqbal",
+    owner_name: "Asif Iqbal",
+    service_types: ["House Cleaner"],
+    service_types_urdu: ["گھر کا صفائی والا"],
+    areas_covered: ["Bahria Town", "DHA"],
+    city: "Islamabad",
+    base_location: { lat: 33.5651, lng: 73.1356, area: "DHA" },
+    rating: 4.9,
+    total_jobs_completed: 240,
+    cancellation_rate: 0.01,
+    avg_response_time_minutes: 10,
+    available_slots: {
+      monday: ["08:00", "10:00", "12:00", "14:00"],
+      tuesday: ["08:00", "10:00", "12:00", "14:00"],
+      wednesday: ["08:00", "10:00", "12:00", "14:00"],
+      thursday: ["08:00", "10:00", "12:00", "14:00"],
+      friday: ["08:00", "10:00", "12:00"],
+      saturday: ["09:00", "11:00", "13:00"],
+      sunday: []
+    },
+    price_range_pkr: { min: 800, max: 2500 },
+    languages_spoken: ["Urdu", "Punjabi"],
+    verified: true,
+    active: true
+  },
+  {
+    _id: "PRV005",
+    name: "Zafar Hussain",
+    owner_name: "Zafar Hussain",
+    service_types: ["Carpenter"],
+    service_types_urdu: ["بڑھئی"],
+    areas_covered: ["G-13", "G-12", "G-10"],
+    city: "Islamabad",
+    base_location: { lat: 33.6554, lng: 72.9789, area: "G-13" },
+    rating: 4.5,
+    total_jobs_completed: 82,
+    cancellation_rate: 0.04,
+    avg_response_time_minutes: 25,
+    available_slots: {
+      monday: ["10:00", "14:00", "16:00"],
+      tuesday: ["10:00", "14:00", "16:00"],
+      wednesday: ["10:00", "14:00", "16:00"],
+      thursday: ["10:00", "14:00", "16:00"],
+      friday: ["10:00", "15:00"],
+      saturday: [],
+      sunday: []
+    },
+    price_range_pkr: { min: 2000, max: 6000 },
+    languages_spoken: ["Urdu", "Pothwari"],
+    verified: false,
+    active: true
+  },
+  {
+    _id: "PRV006",
+    name: "Imran Ahmed",
+    owner_name: "Imran Ahmed",
+    service_types: ["Painter"],
+    service_types_urdu: ["رنگ ساز"],
+    areas_covered: ["F-10", "F-11", "G-11"],
+    city: "Islamabad",
+    base_location: { lat: 33.6923, lng: 73.0089, area: "F-11" },
+    rating: 4.8,
+    total_jobs_completed: 120,
+    cancellation_rate: 0.06,
+    avg_response_time_minutes: 30,
+    available_slots: {
+      monday: ["09:00", "13:00"],
+      tuesday: ["09:00", "13:00"],
+      wednesday: ["09:00", "13:00"],
+      thursday: ["09:00", "13:00"],
+      friday: [],
+      saturday: ["10:00", "14:00"],
+      sunday: []
+    },
+    price_range_pkr: { min: 1500, max: 4000 },
+    languages_spoken: ["Urdu", "Punjabi"],
+    verified: true,
+    active: true
+  },
+  {
+    _id: "PRV007",
+    name: "Farhan Qureshi",
+    owner_name: "Farhan Qureshi",
+    service_types: ["Cook"],
+    service_types_urdu: ["باورچی"],
+    areas_covered: ["G-9", "G-10", "F-8"],
+    city: "Islamabad",
+    base_location: { lat: 33.6899, lng: 73.0388, area: "G-9" },
+    rating: 4.7,
+    total_jobs_completed: 65,
+    cancellation_rate: 0.02,
+    avg_response_time_minutes: 12,
+    available_slots: {
+      monday: ["08:00", "12:00", "17:00"],
+      tuesday: ["08:00", "12:00", "17:00"],
+      wednesday: ["08:00", "12:00", "17:00"],
+      thursday: ["08:00", "12:00", "17:00"],
+      friday: ["08:00", "12:00", "17:00"],
+      saturday: ["09:00", "13:00", "18:00"],
+      sunday: ["09:00", "13:00", "18:00"]
+    },
+    price_range_pkr: { min: 1000, max: 3000 },
+    languages_spoken: ["Urdu", "Punjabi", "English"],
+    verified: true,
+    active: true
+  },
+  {
+    _id: "PRV008",
+    name: "Yasir Arafat",
+    owner_name: "Yasir Arafat",
+    service_types: ["Tutor"],
+    service_types_urdu: ["استاد"],
+    areas_covered: ["I-8", "G-11", "F-10"],
+    city: "Islamabad",
+    base_location: { lat: 33.6904, lng: 73.0165, area: "F-10" },
+    rating: 4.9,
+    total_jobs_completed: 155,
+    cancellation_rate: 0.01,
+    avg_response_time_minutes: 8,
+    available_slots: {
+      monday: ["14:00", "16:00", "18:00"],
+      tuesday: ["14:00", "16:00", "18:00"],
+      wednesday: ["14:00", "16:00", "18:00"],
+      thursday: ["14:00", "16:00", "18:00"],
+      friday: ["14:00", "16:00"],
+      saturday: [],
+      sunday: []
+    },
+    price_range_pkr: { min: 1500, max: 4500 },
+    languages_spoken: ["Urdu", "English"],
+    verified: true,
+    active: true
+  },
+  {
+    _id: "PRV009",
+    name: "Faisal Shah",
+    owner_name: "Faisal Shah",
+    service_types: ["AC Technician"],
+    service_types_urdu: ["اے سی ٹیکنیشن"],
+    areas_covered: ["I-10", "I-9", "G-9"],
+    city: "Islamabad",
+    base_location: { lat: 33.6288, lng: 73.0456, area: "I-10" },
+    rating: 3.2,
+    total_jobs_completed: 45,
+    cancellation_rate: 0.15,
+    avg_response_time_minutes: 38,
+    available_slots: {
+      monday: ["10:00", "14:00"],
+      tuesday: ["10:00", "14:00"],
+      wednesday: ["10:00", "14:00"],
+      thursday: ["10:00", "14:00"],
+      friday: ["15:00"],
+      saturday: [],
+      sunday: []
+    },
+    price_range_pkr: { min: 1500, max: 5000 },
+    languages_spoken: ["Urdu", "Pashto"],
+    verified: false,
+    active: true
+  },
+  {
+    _id: "PRV010",
+    name: "Naveed Akhter",
+    owner_name: "Naveed Akhter",
+    service_types: ["Plumber"],
+    service_types_urdu: ["پلمبر"],
+    areas_covered: ["G-11", "G-10", "G-9"],
+    city: "Islamabad",
+    base_location: { lat: 33.6789, lng: 73.0189, area: "G-11" },
+    rating: 3.9,
+    total_jobs_completed: 55,
+    cancellation_rate: 0.08,
+    avg_response_time_minutes: 28,
+    available_slots: {
+      monday: ["09:00", "12:00", "15:00"],
+      tuesday: ["09:00", "12:00", "15:00"],
+      wednesday: ["09:00", "12:00", "15:00"],
+      thursday: ["09:00", "12:00", "15:00"],
+      friday: ["09:00", "15:00"],
+      saturday: [],
+      sunday: []
+    },
+    price_range_pkr: { min: 1000, max: 3500 },
+    languages_spoken: ["Urdu", "Punjabi"],
+    verified: false,
+    active: true
+  },
+
+  // --- RAWALPINDI (5 providers) ---
+  {
+    _id: "PRV011",
+    name: "Kamran Khan",
+    owner_name: "Kamran Khan",
+    service_types: ["AC Technician"],
+    service_types_urdu: ["اے سی ٹیکنیشن"],
+    areas_covered: ["DHA", "Bahria Town", "Saddar"],
+    city: "Rawalpindi",
+    base_location: { lat: 33.5201, lng: 73.1544, area: "DHA" },
+    rating: 4.5,
+    total_jobs_completed: 92,
+    cancellation_rate: 0.05,
+    avg_response_time_minutes: 30,
+    available_slots: {
+      monday: ["09:00", "12:00", "15:00"],
+      tuesday: ["09:00", "12:00", "15:00"],
+      wednesday: ["09:00", "12:00", "15:00"],
+      thursday: ["09:00", "12:00", "15:00"],
+      friday: ["15:00"],
+      saturday: ["10:00", "13:00"],
+      sunday: []
+    },
+    price_range_pkr: { min: 1500, max: 5000 },
+    languages_spoken: ["Urdu", "Pashto", "English"],
+    verified: false,
+    active: true
+  },
+  {
+    _id: "PRV012",
+    name: "Usman Ghani",
+    owner_name: "Usman Ghani",
+    service_types: ["Plumber"],
+    service_types_urdu: ["پلمبر"],
+    areas_covered: ["Satellite Town", "Saddar", "Westridge"],
+    city: "Rawalpindi",
+    base_location: { lat: 33.6299, lng: 73.0688, area: "Satellite Town" },
+    rating: 3.4,
+    total_jobs_completed: 28,
+    cancellation_rate: 0.12,
+    avg_response_time_minutes: 35,
+    available_slots: {
+      monday: ["10:00", "14:00"],
+      tuesday: ["10:00", "14:00"],
+      wednesday: ["10:00", "14:00"],
+      thursday: ["10:00", "14:00"],
+      friday: [],
+      saturday: ["10:00", "14:00"],
+      sunday: []
+    },
+    price_range_pkr: { min: 1000, max: 3500 },
+    languages_spoken: ["Urdu", "Punjabi"],
+    verified: false,
+    active: true
+  },
+  {
+    _id: "PRV013",
+    name: "Rizwan Butt",
+    owner_name: "Rizwan Butt",
+    service_types: ["Electrician"],
+    service_types_urdu: ["الیکٹریشن"],
+    areas_covered: ["Bahria Town", "Saddar"],
+    city: "Rawalpindi",
+    base_location: { lat: 33.5422, lng: 73.0901, area: "Bahria Town" },
+    rating: 3.8,
+    total_jobs_completed: 74,
+    cancellation_rate: 0.09,
+    avg_response_time_minutes: 24,
+    available_slots: {
+      monday: ["09:00", "13:00", "16:00"],
+      tuesday: ["09:00", "13:00", "16:00"],
+      wednesday: ["09:00", "13:00", "16:00"],
+      thursday: ["09:00", "13:00", "16:00"],
+      friday: ["14:00"],
+      saturday: [],
+      sunday: []
+    },
+    price_range_pkr: { min: 1000, max: 3000 },
+    languages_spoken: ["Urdu", "Punjabi"],
+    verified: true,
+    active: true
+  },
+  {
+    _id: "PRV014",
+    name: "Shahzad Roy",
+    owner_name: "Shahzad Ahmed",
+    service_types: ["House Cleaner"],
+    service_types_urdu: ["گھر کا صفائی والا"],
+    areas_covered: ["Saddar", "Westridge"],
+    city: "Rawalpindi",
+    base_location: { lat: 33.5954, lng: 73.0456, area: "Saddar" },
+    rating: 4.1,
+    total_jobs_completed: 105,
+    cancellation_rate: 0.05,
+    avg_response_time_minutes: 15,
+    available_slots: {
+      monday: ["08:00", "11:00", "14:00"],
+      tuesday: ["08:00", "11:00", "14:00"],
+      wednesday: ["08:00", "11:00", "14:00"],
+      thursday: ["08:00", "11:00", "14:00"],
+      friday: ["08:00", "11:00"],
+      saturday: ["09:00", "12:00"],
+      sunday: []
+    },
+    price_range_pkr: { min: 800, max: 2500 },
+    languages_spoken: ["Urdu", "Punjabi"],
+    verified: true,
+    active: true
+  },
+  {
+    _id: "PRV015",
+    name: "Junaid Khan",
+    owner_name: "Junaid Khan",
+    service_types: ["Carpenter"],
+    service_types_urdu: ["بڑھئی"],
+    areas_covered: ["Satellite Town", "Saddar"],
+    city: "Rawalpindi",
+    base_location: { lat: 33.6355, lng: 73.0756, area: "Satellite Town" },
+    rating: 4.0,
+    total_jobs_completed: 88,
+    cancellation_rate: 0.07,
+    avg_response_time_minutes: 20,
+    available_slots: {
+      monday: ["09:00", "13:00", "16:00"],
+      tuesday: ["09:00", "13:00", "16:00"],
+      wednesday: ["09:00", "13:00", "16:00"],
+      thursday: ["09:00", "13:00", "16:00"],
+      friday: [],
+      saturday: ["10:00", "14:00"],
+      sunday: []
+    },
+    price_range_pkr: { min: 2000, max: 6000 },
+    languages_spoken: ["Urdu", "Pashto"],
+    verified: false,
+    active: true
+  },
+
+  // --- LAHORE (3 providers) ---
+  {
+    _id: "PRV016",
+    name: "Haris Rauf",
+    owner_name: "Haris Rauf",
+    service_types: ["AC Technician"],
+    service_types_urdu: ["اے سی ٹیکنیشن"],
+    areas_covered: ["Gulberg", "Model Town", "DHA Phase 5"],
+    city: "Lahore",
+    base_location: { lat: 31.5204, lng: 74.3587, area: "Gulberg" },
+    rating: 3.1,
+    total_jobs_completed: 18,
+    cancellation_rate: 0.18,
+    avg_response_time_minutes: 45,
+    available_slots: {
+      monday: ["11:00", "15:00"],
+      tuesday: ["11:00", "15:00"],
+      wednesday: ["11:00", "15:00"],
+      thursday: ["11:00", "15:00"],
+      friday: [],
+      saturday: [],
+      sunday: []
+    },
+    price_range_pkr: { min: 1500, max: 5000 },
+    languages_spoken: ["Urdu", "Punjabi"],
+    verified: false,
+    active: true
+  },
+  {
+    _id: "PRV017",
+    name: "Babar Azam",
+    owner_name: "Babar Azam",
+    service_types: ["Plumber"],
+    service_types_urdu: ["پلمبر"],
+    areas_covered: ["Model Town", "Gulberg"],
+    city: "Lahore",
+    base_location: { lat: 31.4805, lng: 74.3256, area: "Model Town" },
+    rating: 4.8,
+    total_jobs_completed: 287,
+    cancellation_rate: 0.02,
+    avg_response_time_minutes: 5,
+    available_slots: {
+      monday: ["09:00", "11:00", "13:00", "15:00"],
+      tuesday: ["09:00", "11:00", "13:00", "15:00"],
+      wednesday: ["09:00", "11:00", "13:00", "15:00"],
+      thursday: ["09:00", "11:00", "13:00", "15:00"],
+      friday: ["09:00", "11:00", "14:00"],
+      saturday: ["10:00", "12:00", "14:00"],
+      sunday: []
+    },
+    price_range_pkr: { min: 1000, max: 3500 },
+    languages_spoken: ["Urdu", "Punjabi", "English"],
+    verified: true,
+    active: true
+  },
+  {
+    _id: "PRV018",
+    name: "Shadab Khan",
+    owner_name: "Shadab Khan",
+    service_types: ["Electrician"],
+    service_types_urdu: ["الیکٹریشن"],
+    areas_covered: ["DHA Phase 5", "Gulberg"],
+    city: "Lahore",
+    base_location: { lat: 31.4699, lng: 74.4001, area: "DHA Phase 5" },
+    rating: 3.7,
+    total_jobs_completed: 48,
+    cancellation_rate: 0.10,
+    avg_response_time_minutes: 26,
+    available_slots: {
+      monday: ["10:00", "13:00", "16:00"],
+      tuesday: ["10:00", "13:00", "16:00"],
+      wednesday: ["10:00", "13:00", "16:00"],
+      thursday: ["10:00", "13:00", "16:00"],
+      friday: ["15:00"],
+      saturday: [],
+      sunday: []
+    },
+    price_range_pkr: { min: 1000, max: 3000 },
+    languages_spoken: ["Urdu", "Punjabi"],
+    verified: false,
+    active: true
+  },
+
+  // --- KARACHI (2 providers) ---
+  {
+    _id: "PRV019",
+    name: "Shaheen Afridi",
+    owner_name: "Shaheen Shah",
+    service_types: ["House Cleaner"],
+    service_types_urdu: ["گھر کا صفائی والا"],
+    areas_covered: ["Clifton", "DHA Phase 6"],
+    city: "Karachi",
+    base_location: { lat: 24.8138, lng: 67.0336, area: "Clifton" },
+    rating: 4.8,
+    total_jobs_completed: 195,
+    cancellation_rate: 0.02,
+    avg_response_time_minutes: 12,
+    available_slots: {
+      monday: ["08:00", "10:00", "12:00", "14:00"],
+      tuesday: ["08:00", "10:00", "12:00", "14:00"],
+      wednesday: ["08:00", "10:00", "12:00", "14:00"],
+      thursday: ["08:00", "10:00", "12:00", "14:00"],
+      friday: ["08:00", "10:00", "12:00"],
+      saturday: ["09:00", "11:00", "13:00"],
+      sunday: []
+    },
+    price_range_pkr: { min: 800, max: 2500 },
+    languages_spoken: ["Urdu", "Sindhi", "English"],
+    verified: true,
+    active: true
+  },
+  {
+    _id: "PRV020",
+    name: "Naseem Shah",
+    owner_name: "Naseem Shah",
+    service_types: ["Painter"],
+    service_types_urdu: ["رنگ ساز"],
+    areas_covered: ["DHA Phase 6", "Clifton"],
+    city: "Karachi",
+    base_location: { lat: 24.7899, lng: 67.0654, area: "DHA Phase 6" },
+    rating: 4.6,
+    total_jobs_completed: 78,
+    cancellation_rate: 0.05,
+    avg_response_time_minutes: 18,
+    available_slots: {
+      monday: ["09:00", "13:00", "16:00"],
+      tuesday: ["09:00", "13:00", "16:00"],
+      wednesday: ["09:00", "13:00", "16:00"],
+      thursday: ["09:00", "13:00", "16:00"],
+      friday: ["09:00", "14:00"],
+      saturday: [],
+      sunday: []
+    },
+    price_range_pkr: { min: 1500, max: 4000 },
+    languages_spoken: ["Urdu", "Sindhi"],
+    verified: true,
+    active: true
+  }
+];
+
+// Perform calculations to inject the precise computed trust_score
+const processedProviders = providers.map(p => {
+  const calculatedScore = calculateTrustScore(
+    p.rating,
+    p.total_jobs_completed,
+    p.cancellation_rate,
+    p.avg_response_time_minutes
+  );
+  
+  return {
+    ...p,
+    trust_score: calculatedScore
+  };
+});
+
+// Write to providers.json file
+fs.writeFileSync(
+  path.join(__dirname, 'providers.json'),
+  JSON.stringify(processedProviders, null, 2),
+  'utf8'
+);
+
+console.log('Successfully generated providers.json containing exactly 20 providers with calculated trust scores!');
